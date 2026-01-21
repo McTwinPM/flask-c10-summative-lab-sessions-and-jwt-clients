@@ -13,6 +13,8 @@ class User(db.Model):
     username = db.Column(db.String, unique=True, nullable=False)
     _password_hash = db.Column(db.String, nullable=False)
 
+    journal_entries = db.relationship('JournalEntry', back_populates='user', lazy=True)
+
     @hybrid_property
     def password_hash(self):
         raise AttributeError("Password hash may not be read.")
@@ -27,10 +29,6 @@ class User(db.Model):
     
     def __repr__(self):
         return f"<User id={self.id} username={self.username}>"
-    
-class UserSchema(Schema):
-    id = fields.Int()
-    username = fields.Str(required=True)
 
 class JournalEntry(db.Model):
     __tablename__ = 'journal_entries'
@@ -39,13 +37,22 @@ class JournalEntry(db.Model):
     title = db.Column(db.String, nullable=False)
     date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     content = db.Column(db.String, nullable=False)
+
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     
 
     def __repr__(self):
-        return f"<JournalEntry id={self.id} title={self.title}>"
+        return f"<JournalEntry id={self.id} title={self.title} date={self.date} content={self.content}>"
     
+class UserSchema(Schema):
+    id = fields.Int()
+    username = fields.Str(required=True)
+    journal_entries = fields.List(fields.Nested(lambda: JournalEntrySchema(exclude=('user_id',))))
+
 class JournalEntrySchema(Schema):
     id = fields.Int()
     title = fields.Str(required=True)
     date = fields.DateTime(required=True)
     content = fields.Str(required=True)
+
+    user = fields.Nested(UserSchema, only=('journal_entries',))
