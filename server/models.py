@@ -48,12 +48,12 @@ class JournalEntry(db.Model):
 class UserSchema(Schema):
     id = fields.Int()
     username = fields.Str(required=True)
-    journal_entries = fields.List(fields.Nested(lambda: JournalEntrySchema(exclude=('user_id',))))
+    journal_entries = fields.List(fields.Nested(lambda: JournalEntrySchema(exclude=('user',))))
 
 class JournalEntrySchema(Schema):
     id = fields.Int()
     title = fields.Str(required=True)
     date = fields.DateTime(required=True)
     content = fields.Str(required=True)
-
-    user = fields.Nested(UserSchema, only=('journal_entries',))
+    user_id = fields.Int(required=True)
+    user = fields.Nested(UserSchema, only=('id', 'username'), exclude=('journal_entries',))
