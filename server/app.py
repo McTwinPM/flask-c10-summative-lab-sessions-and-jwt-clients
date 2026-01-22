@@ -88,11 +88,43 @@ class JournalEntryIndex(Resource):
         except IntegrityError:
             db.session.rollback()
             return {'errors': ['Failed to create journal entry.']}, 422
+    
+    def patch(self, journal_entry_id):
+        request_json = request.get_json()
+        journal_entry = JournalEntry.query.get(journal_entry_id)
+        if not journal_entry:
+            return {'errors': ['Journal entry not found.']}, 404
+
+        
+        journal_entry.title = request_json.get('title', journal_entry.title)
+        journal_entry.date = request_json.get('date', journal_entry.date)
+        journal_entry.content = request_json.get('content', journal_entry.content)
+
+        try:
+            db.session.commit()
+            return JournalEntrySchema().dump(journal_entry), 200
+        except IntegrityError:
+            db.session.rollback()
+            return {'errors': ['Failed to update journal entry.']}, 422
+    
+    def delete(self, journal_entry_id):
+        journal_entry = JournalEntry.query.get(journal_entry_id)
+        if not journal_entry:
+            return {'errors': ['Journal entry not found.']}, 404
+
+        try:
+            db.session.delete(journal_entry)
+            db.session.commit()
+            return '', 204
+        except IntegrityError:
+            db.session.rollback()
+            return {'errors': ['Failed to delete journal entry.']}, 422
 
 api.add_resource(Signup, '/signup', endpoint='/signup')
 api.add_resource(WhoAmI, '/me', endpoint='/me')
 api.add_resource(Login, '/login', endpoint='/login')
 api.add_resource(JournalEntryIndex, '/journal_entries', endpoint='/journal_entries')
+api.add_resource(JournalEntryIndex, '/journal_entries/<int:journal_entry_id>', endpoint='/journal_entry_detail')
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
