@@ -11,11 +11,12 @@ from sqlalchemy.exc import IntegrityError
 def check_if_logged_in():
     open_access_list = [
         'signup',
-        'login'
+        'login',
+        'static'
     ]
 
-    if (request.endpoint) not in open_access_list and (not verify_jwt_in_request()):
-        return {'errors': ['401 Unauthorized']}, 401
+    if request.endpoint and request.endpoint not in open_access_list and not verify_jwt_in_request():
+            return {'errors': ['401 Unauthorized']}, 401
     
 
 class Signup(Resource):
@@ -33,23 +34,26 @@ class Signup(Resource):
         try:
             db.session.add(new_user)
             db.session.commit()
+            token = create_access_token(identity=new_user.id)
+            return make_response(jsonify(token=token, user=UserSchema().dump(new_user)), 201)
         except IntegrityError:
             db.session.rollback()
-            return {'errors': ['Username already exists.']}, 400
+            return {'errors': ['Username already exists.']}, 422
 
-        user_schema = UserSchema()
-        return user_schema.dump(new_user), 201
     
 class WhoAmI(Resource):
     def get(self):
         user_id = get_jwt_identity()
         user = User.query.filter(User.id == user_id).first()
-        return UserSchema().dump(user), 200
+        return make_response(jsonify(user=UserSchema().dump(user)), 200)
     
 class Login(Resource):
     def post(self):
         username = request.json['username']
         password = request.json['password']
+
+        if not username or not password:
+            return {'errors': ['Username and password are required.']}, 400
 
         user = User.query.filter(User.username == username).first()
         if user and user.authenticate(password):
@@ -62,8 +66,12 @@ class JournalEntryIndex(Resource):
     def get(self):
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
-        pagination = JournalEntry.query.paginate(page, per_page, error_out=False)
+        user_id = get_jwt_identity()
+        print(f"User ID: {user_id}")  # Debug
+
+        pagination = JournalEntry.query.filter_by(user_id=user_id).paginate(page, per_page, error_out=False)
         journal_entries = pagination.items
+        print(f"Found {len(journal_entries)} entries")  # Debug
 
         return {
             'page': page,
@@ -88,10 +96,12 @@ class JournalEntryIndex(Resource):
         except IntegrityError:
             db.session.rollback()
             return {'errors': ['Failed to create journal entry.']}, 422
-    
+
+class JournalEntryDetail(Resource):
     def patch(self, journal_entry_id):
         request_json = request.get_json()
-        journal_entry = JournalEntry.query.get(journal_entry_id)
+        user_id = get_jwt_identity()
+        journal_entry = JournalEntry.query.filter_by(id=journal_entry_id, user_id=user_id).first()
         if not journal_entry:
             return {'errors': ['Journal entry not found.']}, 404
 
@@ -108,7 +118,8 @@ class JournalEntryIndex(Resource):
             return {'errors': ['Failed to update journal entry.']}, 422
     
     def delete(self, journal_entry_id):
-        journal_entry = JournalEntry.query.get(journal_entry_id)
+        user_id = get_jwt_identity()
+        journal_entry = JournalEntry.query.filter_by(id=journal_entry_id, user_id=user_id).first()
         if not journal_entry:
             return {'errors': ['Journal entry not found.']}, 404
 
@@ -120,11 +131,10 @@ class JournalEntryIndex(Resource):
             db.session.rollback()
             return {'errors': ['Failed to delete journal entry.']}, 422
 
-api.add_resource(Signup, '/signup', endpoint='/signup')
-api.add_resource(WhoAmI, '/me', endpoint='/me')
-api.add_resource(Login, '/login', endpoint='/login')
-api.add_resource(JournalEntryIndex, '/journal_entries', endpoint='/journal_entries')
-api.add_resource(JournalEntryIndex, '/journal_entries/<int:journal_entry_id>', endpoint='/journal_entry_detail')
-
+api.add_resource(Signup, '/signup', endpoint='signup')
+api.add_resource(WhoAmI, '/me', endpoint='me')
+api.add_resource(Login, '/login', endpoint='login')
+api.add_resource(JournalEntryIndex, '/journal_entries', endpoint='journal_entries')
+api.add_resource(JournalEntryDetail, '/journal_entries/<int:journal_entry_id>', endpoint='journal_entry_detail')
 if __name__ == '__main__':
     app.run(port=5555, debug=True)

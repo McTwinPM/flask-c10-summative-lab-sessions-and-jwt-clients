@@ -13,7 +13,7 @@ class User(db.Model):
     username = db.Column(db.String, unique=True, nullable=False)
     _password_hash = db.Column(db.String, nullable=False)
 
-    journal_entries = db.relationship('JournalEntry', back_populates='user', lazy=True)
+    journal_entries = db.relationship('JournalEntry', back_populates='user', lazy=True, cascade='all, delete-orphan')
 
     @hybrid_property
     def password_hash(self):
@@ -21,8 +21,8 @@ class User(db.Model):
     
     @password_hash.setter
     def password_hash(self, password):
-        password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
-        self._password_hash = password_hash
+        password_hash = bcrypt.generate_password_hash(password)
+        self._password_hash = password_hash.decode('utf-8')
     
     def authenticate(self, password):
         return bcrypt.check_password_hash(self._password_hash, password)
@@ -48,12 +48,12 @@ class JournalEntry(db.Model):
 class UserSchema(Schema):
     id = fields.Int()
     username = fields.Str(required=True)
-    journal_entries = fields.List(fields.Nested(lambda: JournalEntrySchema(exclude=('user_id',))))
+    journal_entries = fields.List(fields.Nested(lambda: JournalEntrySchema(exclude=('user',))))
 
 class JournalEntrySchema(Schema):
     id = fields.Int()
     title = fields.Str(required=True)
     date = fields.DateTime(required=True)
     content = fields.Str(required=True)
-
-    user = fields.Nested(UserSchema, only=('journal_entries',))
+    user_id = fields.Int(required=True)
+    user = fields.Nested(UserSchema, only=('id', 'username'), exclude=('journal_entries',))
