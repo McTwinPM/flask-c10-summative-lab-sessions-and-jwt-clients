@@ -17,6 +17,7 @@ metadata = MetaData(naming_convention={
 })
 
 db = SQLAlchemy(metadata=metadata)
+db.init_app(app)
 migrate = Migrate(app, db)
 bcrypt = Bcrypt(app)
 api = Api(app)
