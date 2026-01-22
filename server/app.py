@@ -34,23 +34,26 @@ class Signup(Resource):
         try:
             db.session.add(new_user)
             db.session.commit()
+            token = create_access_token(identity=new_user.id)
+            return make_response(jsonify(token=token, user=UserSchema().dump(new_user)), 201)
         except IntegrityError:
             db.session.rollback()
-            return {'errors': ['Username already exists.']}, 400
+            return {'errors': ['Username already exists.']}, 422
 
-        user_schema = UserSchema()
-        return user_schema.dump(new_user), 201
     
 class WhoAmI(Resource):
     def get(self):
         user_id = get_jwt_identity()
         user = User.query.filter(User.id == user_id).first()
-        return UserSchema().dump(user), 200
+        return make_response(jsonify(user=UserSchema().dump(user)), 200)
     
 class Login(Resource):
     def post(self):
         username = request.json['username']
         password = request.json['password']
+
+        if not username or not password:
+            return {'errors': ['Username and password are required.']}, 400
 
         user = User.query.filter(User.username == username).first()
         if user and user.authenticate(password):
