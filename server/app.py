@@ -15,13 +15,20 @@ def check_if_logged_in():
         'static'
     ]
 
-    if request.endpoint and request.endpoint not in open_access_list and not verify_jwt_in_request():
+    if request.endpoint and request.endpoint not in open_access_list:
+        try:
+            verify_jwt_in_request()
+        except:
             return {'errors': ['401 Unauthorized']}, 401
     
 
 class Signup(Resource):
     def post(self):
         data = request.get_json()
+
+        if not data:
+            return {'errors': ['Request must contain JSON data.']}, 400
+        
         username = data.get('username')
         password = data.get('password')
 
@@ -45,12 +52,22 @@ class WhoAmI(Resource):
     def get(self):
         user_id = get_jwt_identity()
         user = User.query.filter(User.id == user_id).first()
+
+        if not user:
+            return {'errors': ['User not found.']}, 404
+        
         return make_response(jsonify(user=UserSchema().dump(user)), 200)
     
 class Login(Resource):
     def post(self):
-        username = request.json['username']
-        password = request.json['password']
+
+        data = request.get_json()
+
+        if not data:
+            return {'errors': ['Request must contain JSON data.']}, 400
+        
+        username = data.get('username')
+        password = data.get('password')
 
         if not username or not password:
             return {'errors': ['Username and password are required.']}, 400
@@ -67,11 +84,9 @@ class JournalEntryIndex(Resource):
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
         user_id = get_jwt_identity()
-        print(f"User ID: {user_id}")  # Debug
 
         pagination = JournalEntry.query.filter_by(user_id=user_id).paginate(page, per_page, error_out=False)
         journal_entries = pagination.items
-        print(f"Found {len(journal_entries)} entries")  # Debug
 
         return {
             'page': page,
@@ -83,10 +98,19 @@ class JournalEntryIndex(Resource):
     
     def post(self):
         request_json = request.get_json()
+        if not request_json:
+            return {'errors': ['Request must contain JSON data.']}, 400
+        
+        title = request_json.get('title')
+        content = request_json.get('content')
+        
+        if not title or not content:
+            return {'errors': ['Title and content are required.']}, 400
+        
         journal_entry = JournalEntry(
-            title=request_json.get('title'),
+            title=title,
             date=request_json.get('date'),
-            content=request_json.get('content'),
+            content=content,
             user_id=get_jwt_identity()
         )
         try:
@@ -102,9 +126,11 @@ class JournalEntryDetail(Resource):
         request_json = request.get_json()
         user_id = get_jwt_identity()
         journal_entry = JournalEntry.query.filter_by(id=journal_entry_id, user_id=user_id).first()
+        
         if not journal_entry:
             return {'errors': ['Journal entry not found.']}, 404
-
+        if not request_json:
+            return {'errors': ['Request must contain JSON data.']}, 400
         
         journal_entry.title = request_json.get('title', journal_entry.title)
         journal_entry.date = request_json.get('date', journal_entry.date)
