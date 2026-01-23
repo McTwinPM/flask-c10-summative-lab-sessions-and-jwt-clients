@@ -18,7 +18,7 @@ def check_if_logged_in():
     if request.endpoint and request.endpoint not in open_access_list:
         try:
             verify_jwt_in_request()
-        except:
+        except Exception as e:
             return {'errors': ['401 Unauthorized']}, 401
     
 
@@ -41,7 +41,7 @@ class Signup(Resource):
         try:
             db.session.add(new_user)
             db.session.commit()
-            token = create_access_token(identity=new_user.id)
+            token = create_access_token(identity=str(new_user.id))
             return make_response(jsonify(token=token, user=UserSchema().dump(new_user)), 201)
         except IntegrityError:
             db.session.rollback()
@@ -56,7 +56,7 @@ class WhoAmI(Resource):
         if not user:
             return {'errors': ['User not found.']}, 404
         
-        return make_response(jsonify(user=UserSchema().dump(user)), 200)
+        return  UserSchema().dump(user), 200
     
 class Login(Resource):
     def post(self):
@@ -74,7 +74,7 @@ class Login(Resource):
 
         user = User.query.filter(User.username == username).first()
         if user and user.authenticate(password):
-            token = create_access_token(identity=user.id)
+            token = create_access_token(identity=str(user.id))
             return make_response(jsonify(token=token, user=UserSchema().dump(user)), 200)
         else:
             return {'errors': ['Invalid username or password']}, 401
@@ -83,7 +83,7 @@ class JournalEntryIndex(Resource):
     def get(self):
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
 
         pagination = JournalEntry.query.filter_by(user_id=user_id).paginate(page, per_page, error_out=False)
         journal_entries = pagination.items
@@ -111,7 +111,7 @@ class JournalEntryIndex(Resource):
             title=title,
             date=request_json.get('date'),
             content=content,
-            user_id=get_jwt_identity()
+            user_id=int(get_jwt_identity())
         )
         try:
             db.session.add(journal_entry)
@@ -124,7 +124,7 @@ class JournalEntryIndex(Resource):
 class JournalEntryDetail(Resource):
     def patch(self, journal_entry_id):
         request_json = request.get_json()
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         journal_entry = JournalEntry.query.filter_by(id=journal_entry_id, user_id=user_id).first()
         
         if not journal_entry:
@@ -144,7 +144,7 @@ class JournalEntryDetail(Resource):
             return {'errors': ['Failed to update journal entry.']}, 422
     
     def delete(self, journal_entry_id):
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         journal_entry = JournalEntry.query.filter_by(id=journal_entry_id, user_id=user_id).first()
         if not journal_entry:
             return {'errors': ['Journal entry not found.']}, 404
