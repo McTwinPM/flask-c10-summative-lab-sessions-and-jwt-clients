@@ -1,7 +1,10 @@
 # MY JOURNAL APP API
 
 Welcome the "My Journal App" API and database! 
-This is an API that allows users to make an account, and make journal entries that are only visible to those users by using JSON Web Token
+This is an API that allows users to:
+    1. make an account, with a username and password
+    2. Leave the user logged in upon refresh
+    3. make journal entries that are only visible to those users by using JSON Web Token. These journal entries need a Title, a Date, and content. The app also allows the user to make changes to an entry, and delete an entry entirely.
 
 ## Set up
 
@@ -43,7 +46,9 @@ This is an API that allows users to make an account, and make journal entries th
 
 3. GET Me (`/me`) - Checks for token, then retrieves current user
 
-4. GET and POST JournalEntryIndex (`/journal_entries`) - Displays journal entries attributed to current user, and allows user to create new entries with a title, date, and content.
+4. *GET and POST JournalEntryIndex (`/journal_entries`) - Displays journal entries attributed to current user, and allows user to create new entries with a title, date, and content.
 
-5. PATCH and DELETE JournalEntryDetail (`/journal_entries/<int:journal_entry_id>`) - allows current user to edit journal entries, and/or delete journal entries.
+5. *PATCH and DELETE JournalEntryDetail (`/journal_entries/<int:journal_entry_id>`) - allows current user to edit journal entries, and/or delete journal entries.
+
+    *Currently these routes need frontend implementation
 

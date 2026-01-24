@@ -21,7 +21,6 @@ def check_if_logged_in():
         except Exception as e:
             return {'errors': ['401 Unauthorized']}, 401
     
-
 class Signup(Resource):
     def post(self):
         data = request.get_json()
@@ -46,7 +45,6 @@ class Signup(Resource):
         except IntegrityError:
             db.session.rollback()
             return {'errors': ['Username already exists.']}, 422
-
     
 class WhoAmI(Resource):
     def get(self):

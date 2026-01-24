@@ -7,14 +7,12 @@ from app import app
 fake = Faker()
 
 with app.app_context():
-    # Delete existing data
     print("Deleting existing data...")
     JournalEntry.query.delete()
     User.query.delete()
 
     fake = Faker()
 
-    # Create users
     print("Creating users...")
     users = []
     usernames = []
